@@ -62,7 +62,7 @@ def predict():
     try:
         obs = pd.DataFrame([observation], columns=columns).astype(dtypes)
     except ValueError as e:
-        return jsonify({'error': 'Observation is invalid!'}), 400
+        return jsonify({'error': f'Invalid value in observation: {e}'}), 400
 
     # Get the probability of the positive class
     proba = pipeline.predict_proba(obs)[0, 1]
@@ -71,7 +71,7 @@ def predict():
     if Prediction.select().where(Prediction.observation_id == _id).exists():
         existing_pred = Prediction.get(Prediction.observation_id == _id)
         response = {
-            'error': f'Observation ID: "{_id}" already exists',
+            'error': f'Observation ID {_id} already exists',
             'proba': existing_pred.proba
         }
         return jsonify(response), 400
@@ -92,7 +92,6 @@ def predict():
     # Return the response with the probability
     response = {'proba': proba}
     return jsonify(response)
-
 
 # /update endpoint
 @app.route('/update', methods=['POST'])
@@ -117,18 +116,11 @@ def update_true_class():
     prediction.true_class = true_class
     prediction.save()
     
-    # Retrieve the observation and calculate the probability (same as during prediction)
-    observation = json.loads(prediction.observation)
-    obs = pd.DataFrame([observation], columns=columns).astype(dtypes)
-    proba = pipeline.predict_proba(obs)[0, 1] 
-    
-    # Return the updated observation with proba
+    # Return the updated observation
     response = {
         'id': prediction.observation_id,
-        'observation': prediction.observation,
-        'observation_id': prediction.observation_id,
-        'proba': proba,
-        'true_class': prediction.true_class
+        'true_class': prediction.true_class,
+        'observation': json.loads(prediction.observation)
     }
     
     return jsonify(response), 200
